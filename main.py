@@ -24,59 +24,74 @@ async def generate(rows: int):
 
 @app.get('/thread')
 async def thread_bench():
-    rows = split_df()
-    pool = ThreadPoolExecutor(5)
-    start = time.time()
-    pool.map(main_task, rows)
-    end = time.time()
-    return {"Threading time": end - start}
+    total_time = 0
+    for _ in range(10):
+        rows = split_df()
+        pool = ThreadPoolExecutor(5)
+        start = time.time()
+        pool.map(main_task, rows)
+        end = time.time()
+        total_time += end-start
+    return {"Threading time": total_time/10}
 
 
 @app.get('/proc')
 async def proc_bench():
-    rows = split_df()
-    pool = Pool(5)
-    start = time.time()
-    pool.map(main_task, (row for row in rows))
-    pool.close()
-    pool.join()
-    end = time.time()
-    return {"Multiproccessing time": end - start}
+    total_time = 0
+    for _ in range(10):
+        rows = split_df()
+        pool = Pool(5)
+        start = time.time()
+        pool.map(main_task, (row for row in rows))
+        pool.close()
+        pool.join()
+        end = time.time()
+        total_time += end-start
+    return {"Multiproccessing time": total_time/10}
 
 
 @app.get('/async')
 async def async_bench():
-    nest_asyncio.apply()
-    rows = split_df()
-    tasks = []
-    for row in rows:
-        tasks.append(
-            asyncio.create_task(async_main_task(row))
-        )
-    start = time.time()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(*tasks))
-    end = time.time()
-    return {"Async time": end - start}
+    total_time = 0
+    for _ in range(10):
+        nest_asyncio.apply()
+        rows = split_df()
+        tasks = []
+        for row in rows:
+            tasks.append(
+                asyncio.create_task(async_main_task(row))
+            )
+        start = time.time()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.gather(*tasks))
+        end = time.time()
+        total_time += end-start
+    return {"Async time": total_time/10}
 
 
 @app.get('/celery')
 async def celery_bench():
-    funcs = []
-    for idx, row in pandas.read_csv("benchmark.csv").iterrows():
-        funcs.append(main_task_celery.s(row.to_json()))
-    job = group(funcs)
-    start = time.time()
-    job()
-    end = time.time()
-    return {"Celery time": end - start}
+    total_time = 0
+    for _ in range(10):
+        funcs = []
+        for row in split_df():
+            funcs.append(main_task_celery.s(row.to_json()))
+        job = group(funcs)
+        start = time.time()
+        job()
+        end = time.time()
+        total_time += end-start
+    return {"Celery time": total_time/10}
 
 
 @app.get('/redis')
 async def redis_bench():
-    df = pandas.read_csv('benchmark.csv')
-    start = time.time()
-    q = Queue(connection=Redis())
-    result = q.enqueue(main_task, df)
-    end = time.time()
-    return {"Redis time": end - start}
+    total_time = 0
+    for _ in range(10):
+        df = pandas.read_csv('benchmark.csv')
+        start = time.time()
+        q = Queue(connection=Redis())
+        result = q.enqueue(main_task, df)
+        end = time.time()
+        total_time += end-start
+    return {"Redis time": total_time/10}
