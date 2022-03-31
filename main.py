@@ -89,8 +89,8 @@ async def redis_bench():
     total_time = 0
     for _ in range(10):
         df = pandas.read_csv('benchmark.csv')
-        start = time.time()
         q = Queue(connection=Redis())
+        start = time.time()
         result = q.enqueue(main_task, df)
         end = time.time()
         total_time += end-start
